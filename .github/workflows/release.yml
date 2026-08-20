@@ -1,0 +1,59 @@
+name: Android Build & Release
+
+on:
+  push:
+    tags:
+      - 'v*' # Trigger when pushing tags starting with 'v', e.g., v1.0.0
+
+jobs:
+  build:
+    name: Build & Release APK
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'zulu'
+          java-version: '17'
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Decode Keystore
+        run: |
+          echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 --decode > release.jks
+
+      - name: Build Release APK
+        env:
+          SIGNING_KEY_STORE_PATH: release.jks
+          SIGNING_STORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          SIGNING_KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          SIGNING_KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+        run: ./gradlew :app:assembleRelease
+
+      - name: Create GitHub Release
+        id: create_release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: Release ${{ github.ref_name }}
+          draft: false
+          prerelease: false
+          files: |
+            app/build/outputs/apk/release/pixel-wifi-data-helper-v*-release.apk
+          body: |
+            ## Pixel WiFi & Data Helper ${{ github.ref_name }}
+            
+            ### Changes
+            - Automatically built and signed by GitHub Actions.
+            - Professional LSPosed module for Android 17.
+            
+            **SHA-256 Checksum:**
+            ```
+            ${{ hashFiles('app/build/outputs/apk/release/*.apk') }}
+            ```
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
