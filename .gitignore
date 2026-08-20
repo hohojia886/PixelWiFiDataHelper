@@ -1,0 +1,49 @@
+# Gradle and build folders
+.gradle/
+.kotlin/
+build/
+app/build/
+local.properties
+
+# IDE folders and files
+.idea/
+*.iml
+*.iws
+*.ipr
+out/
+.idea/workspace.xml
+.idea/tasks.xml
+.idea/gradle.xml
+.idea/assetWizardSettings.xml
+.idea/dictionaries
+.idea/libraries
+.idea/caches
+
+# Build outputs
+*.apk
+*.ap_
+*.dex
+*.class
+bin/
+gen/
+obj/
+
+# Log Files
+*.log
+
+# Android Studio Captures
+captures/
+
+# Keystore files (Keep your keys private!)
+*.jks
+*.keystore
+
+# Google Services
+google-services.json
+
+# macOS
+.DS_Store
+
+# Native build
+.externalNativeBuild/
+.cxx/
