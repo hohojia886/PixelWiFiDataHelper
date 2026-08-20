@@ -33,7 +33,9 @@ jobs:
           SIGNING_STORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
           SIGNING_KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
           SIGNING_KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
-        run: ./gradlew :app:assembleRelease
+        run: |
+          chmod +x gradlew
+          ./gradlew :app:assembleRelease
 
       - name: Create GitHub Release
         id: create_release
