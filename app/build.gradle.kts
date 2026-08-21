@@ -4,14 +4,18 @@ plugins {
 
 android {
     namespace = "io.github.hohojia886.pixelwifidatahelper"
-    compileSdk = 35
+    compileSdk = 37
 
     defaultConfig {
         applicationId = "io.github.hohojia886.pixelwifidatahelper"
-        minSdk = 35
-        targetSdk = 35
-        versionCode = 2
-        versionName = "1.0.1"
+        minSdk = 37
+        targetSdk = 37
+        versionCode = 3
+        versionName = "1.0.2"
+    }
+
+    buildFeatures {
+        buildConfig = true
     }
 
     signingConfigs {
@@ -46,7 +50,7 @@ android {
     sourceSets {
         getByName("main") {
             resources {
-                srcDirs("src/main/resources")
+                directories.add("src/main/resources")
             }
         }
     }
@@ -56,7 +60,7 @@ android {
 androidComponents {
     onVariants { variant ->
         variant.outputs.forEach { output ->
-            val name = "pixel-wifi-data-helper-v${android.defaultConfig.versionName}-release.apk"
+            val name = "pixel-wifi-data-helper-v${android.defaultConfig.versionName}-${variant.name}.apk"
             (output as com.android.build.api.variant.impl.VariantOutputImpl).outputFileName.set(name)
         }
     }

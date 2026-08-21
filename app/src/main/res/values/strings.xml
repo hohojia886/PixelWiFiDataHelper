@@ -1,3 +1,7 @@
 <resources>
-    <string name="app_name">PixelWiFiDataHelper</string>
+    <string name="app_name">Pixel WiFi &amp; Data Helper</string>
+    <string name="module_active">Module Active</string>
+    <string name="enable_wifi_fix">True WiFi Toggle</string>
+    <string name="enable_data_fix">Bypass Data Confirmation</string>
+    <string name="version_display">v%1$s</string>
 </resources>
