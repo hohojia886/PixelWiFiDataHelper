@@ -7,32 +7,50 @@ import android.content.IntentFilter
 import android.net.Uri
 import android.net.wifi.WifiManager
 import android.util.Log
+import io.github.hohojia886.pixelwifidatahelper.utils.Constants.ACTION_UPDATE
+import io.github.hohojia886.pixelwifidatahelper.utils.Constants.KEY_WIFI_FIX
+import io.github.hohojia886.pixelwifidatahelper.utils.Constants.LOG_TAG
+import io.github.hohojia886.pixelwifidatahelper.utils.Constants.PERMISSION_UPDATE
+import io.github.hohojia886.pixelwifidatahelper.utils.Constants.PROVIDER_URI
 import io.github.libxposed.api.XposedModule
+import java.lang.reflect.Field
+import java.lang.reflect.Method
 
 object WifiHook {
     private const val TARGET_CLASS = "com.android.systemui.statusbar.pipeline.wifi.data.repository.prod.WifiRepositoryImpl"
     @Volatile private var isEnabled = true
-    private var isInitialized = false
+
+    private var cancelMethod: Method? = null
+    private var wifiManagerField: Field? = null
 
     private fun updateState(context: Context) {
-        Log.d("PixelWiFiFix", "Attempting to load state from provider... context: ${context.packageName}")
+        Log.d(LOG_TAG, "WifiHook: Attempting to load state from provider...")
         runCatching {
-            val uri = Uri.parse("content://io.github.hohojia886.pixelwifidatahelper.prefs")
+            val uri = Uri.parse(PROVIDER_URI)
             val bundle = context.contentResolver.call(uri, "get", null, null)
             if (bundle != null) {
-                isEnabled = bundle.getBoolean("wifi_fix", true)
-                isInitialized = true
-                Log.i("PixelWiFiFix", "Status loaded from provider: $isEnabled (Total keys: ${bundle.size()})")
+                isEnabled = bundle.getBoolean(KEY_WIFI_FIX, true)
+                Log.i(LOG_TAG, "WifiHook: Status loaded from provider: $isEnabled")
             } else {
-                Log.e("PixelWiFiFix", "Failed to load status: bundle is null. Is the provider exported and authority correct?")
+                Log.e(LOG_TAG, "WifiHook: Failed to load status: bundle is null.")
             }
         }.onFailure {
-            Log.e("PixelWiFiFix", "Critical error loading status from provider: ${it.message}", it)
+            Log.e(LOG_TAG, "WifiHook: Critical error loading status from provider", it)
         }
     }
 
     fun hook(module: XposedModule, classLoader: ClassLoader) {
         try {
+            val wifiRepoClass = classLoader.loadClass(TARGET_CLASS)
+            val pauseWifiMethod = wifiRepoClass.getDeclaredMethod("pauseWifi")
+
+            runCatching {
+                cancelMethod = wifiRepoClass.getDeclaredMethod("cancelOptimisticToggleTimeoutJobs").apply { isAccessible = true }
+                wifiManagerField = wifiRepoClass.getDeclaredField("wifiManager").apply { isAccessible = true }
+            }.onFailure {
+                Log.e(LOG_TAG, "WifiHook: Failed to find internal methods/fields", it)
+            }
+
             // Update receiver
             runCatching {
                 val appClass = classLoader.loadClass("android.app.Application")
@@ -42,58 +60,46 @@ object WifiHook {
                         // Initial load
                         updateState(app)
 
-                        val filter = IntentFilter("io.github.hohojia886.pixelwifidatahelper.UPDATE")
+                        val filter = IntentFilter(ACTION_UPDATE)
                         app.registerReceiver(object : BroadcastReceiver() {
                             override fun onReceive(context: Context?, intent: Intent?) {
-                                if (intent != null && intent.hasExtra("wifi_fix")) {
-                                    isEnabled = intent.getBooleanExtra("wifi_fix", true)
-                                    isInitialized = true
-                                    Log.i("PixelWiFiFix", "WiFi fix status updated by broadcast: $isEnabled")
+                                if (intent != null && intent.hasExtra(KEY_WIFI_FIX)) {
+                                    isEnabled = intent.getBooleanExtra(KEY_WIFI_FIX, true)
+                                    Log.i(LOG_TAG, "WifiHook: WiFi fix status updated by broadcast: $isEnabled")
                                 }
                             }
-                        }, filter, "io.github.hohojia886.pixelwifidatahelper.PERMISSION", null, Context.RECEIVER_EXPORTED)
+                        }, filter, PERMISSION_UPDATE, null, Context.RECEIVER_EXPORTED)
                     }
                     chain.proceed()
                 }
             }
-
-            val wifiRepoClass = classLoader.loadClass(TARGET_CLASS)
-            val pauseWifiMethod = wifiRepoClass.getDeclaredMethod("pauseWifi")
 
             module.hook(pauseWifiMethod).intercept { chain ->
                 if (!isEnabled) {
                     return@intercept chain.proceed()
                 }
 
-                val instance = chain.thisObject
-                if (instance == null) {
-                    return@intercept chain.proceed()
+                val instance = chain.thisObject ?: return@intercept chain.proceed()
+                
+                val success = runCatching {
+                    cancelMethod?.invoke(instance)
+                    
+                    val wifiManager = wifiManagerField?.get(instance) as? WifiManager
+                        ?: return@runCatching false
+
+                    Log.i(LOG_TAG, "WifiHook: Forcing setWifiEnabled(false)")
+                    @Suppress("DEPRECATION")
+                    wifiManager.setWifiEnabled(false)
+                    true
+                }.getOrElse {
+                    Log.e(LOG_TAG, "WifiHook: Error in pauseWifi hook", it)
+                    false
                 }
                 
-                try {
-                    runCatching {
-                        val cancelMethod = instance.javaClass.getDeclaredMethod("cancelOptimisticToggleTimeoutJobs")
-                        cancelMethod.isAccessible = true
-                        cancelMethod.invoke(instance)
-                    }
-
-                    val wifiManagerField = instance.javaClass.getDeclaredField("wifiManager")
-                    wifiManagerField.isAccessible = true
-                    val wifiManager = wifiManagerField.get(instance) as? WifiManager
-
-                    if (wifiManager != null) {
-                        Log.i("PixelWiFiFix", "WiFi Fix Active: Forcing setWifiEnabled(false)")
-                        @Suppress("DEPRECATION")
-                        wifiManager.setWifiEnabled(false)
-                    }
-                } catch (e: Exception) {
-                    Log.e("PixelWiFiFix", "Error in pauseWifi hook", e)
-                }
-                
-                null 
+                if (success) null else chain.proceed()
             }
         } catch (e: Throwable) {
-            Log.e("PixelWiFiFix", "Failed to hook pauseWifi", e)
+            Log.e(LOG_TAG, "WifiHook: Failed to hook pauseWifi", e)
         }
     }
 }

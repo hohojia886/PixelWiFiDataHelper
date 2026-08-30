@@ -1,5 +1,5 @@
 # Pixel WiFi & Data Helper
-**Version:** v1.0.2
+**Version:** v1.0.3
 
 A professional LSPosed module designed for Android 17 or higher to restore intuitive and efficient Quick Settings behaviors that were altered in the latest OS versions.
 
@@ -19,7 +19,7 @@ A professional LSPosed module designed for Android 17 or higher to restore intui
 ## 📥 Installation
 
 1. Download the latest release from the [GitHub Releases](https://github.com/hohojia886/PixelWiFiDataHelper/releases) page.
-   - APK name format: `pixel-wifi-data-helper-v1.0.2-release.apk`
+   - APK name format: `pixel-wifi-data-helper-v1.0.3-release.apk`
 2. Install the APK on your device.
 3. Open the **LSPosed Manager**.
 4. Enable the **Pixel WiFi & Data Helper** module.

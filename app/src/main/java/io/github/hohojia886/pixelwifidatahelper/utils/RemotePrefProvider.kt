@@ -7,6 +7,8 @@ import android.net.Uri
 import android.os.Bundle
 import android.content.Context
 import android.util.Log
+import io.github.hohojia886.pixelwifidatahelper.utils.Constants.LOG_TAG
+import io.github.hohojia886.pixelwifidatahelper.utils.Constants.PREFS_NAME
 
 class RemotePrefProvider : ContentProvider() {
     override fun onCreate(): Boolean = true
@@ -17,17 +19,17 @@ class RemotePrefProvider : ContentProvider() {
         val selfUid = android.os.Process.myUid()
 
         if (callingUid != systemUiUid && callingUid != selfUid) {
-            Log.w("RemotePrefProvider", "Unauthorized call from UID: $callingUid")
+            Log.w(LOG_TAG, "RemotePrefProvider: Unauthorized call from UID: $callingUid")
             return null
         }
 
-        Log.d("RemotePrefProvider", "call: $method from UID: $callingUid")
+        Log.d(LOG_TAG, "RemotePrefProvider: call: $method from UID: $callingUid")
         if (method == "get") {
             val res = Bundle()
             val ctx = context?.let {
                 if (it.isDeviceProtectedStorage) it else it.createDeviceProtectedStorageContext()
             } ?: context
-            val prefs = ctx?.getSharedPreferences("pixel_wifi_data_prefs", Context.MODE_PRIVATE)
+            val prefs = ctx?.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
             prefs?.all?.forEach { (k, v) ->
                 when (v) {
                     is Boolean -> res.putBoolean(k, v)
@@ -35,7 +37,7 @@ class RemotePrefProvider : ContentProvider() {
                     is String -> res.putString(k, v)
                 }
             }
-            Log.d("RemotePrefProvider", "returning prefs: ${res.size()}")
+            Log.d(LOG_TAG, "RemotePrefProvider: returning prefs: ${res.size()}")
             return res
         }
         return null
